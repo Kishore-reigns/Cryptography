@@ -41,5 +41,5 @@ def extended_euclidean_verbose(a,b):
 if __name__ == "__main__":
     a = int(input("Enter a = "))
     b = int(input("Enter b = "))
-    extended_euclidean_verbose(135,61)
-    print(extended_euclidean(135,61))
+    extended_euclidean_verbose(a,b)
+    print(extended_euclidean(a,b))
