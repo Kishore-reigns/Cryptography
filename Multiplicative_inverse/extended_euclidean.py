@@ -6,9 +6,7 @@ def extended_euclidean(a,b):
             print("multiplicative inverse doesn't exist since a and b are not relatively prime")
             return None
         elif b3 == 1:
-            if b2 < 0 :
-                b2 += b 
-            return b2
+            return b2%b
         q = a3 // b3 
         t1 , t2 , t3 = a1 - q*b1 , a2 - q*b2 , a3 - q*b3
         a1 , a2 , a3 = b1 , b2 , b3
@@ -26,8 +24,7 @@ def extended_euclidean_verbose(a,b):
             print("multiplicative inverse doesn't exist since a and b are not relatively prime")
             break
         elif b3 == 1:
-            if b2 < 0 : 
-                b2 += b
+            b2 = b2 % b
             print("Multiplicative inverse = ",b2)
             break
         q = a3 // b3 
