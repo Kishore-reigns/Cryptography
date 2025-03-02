@@ -1,7 +1,6 @@
 import numpy as np
-from Crypto import pad
 
-S_BOX = [
+S_BOX = np.array([
     [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76],
     [0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0],
     [0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15],
@@ -18,63 +17,75 @@ S_BOX = [
     [0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e],
     [0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf],
     [0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16]
-]
-
-TEST = [[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]
-
-MIX_COLUMNS_MATRIX = np.array([
-    [0x02, 0x03, 0x01, 0x01],
-    [0x01, 0x02, 0x03, 0x01],
-    [0x01, 0x01, 0x02, 0x03],
-    [0x03, 0x01, 0x01, 0x02]
 ], dtype=np.uint8)
+INV_S_BOX = np.array([S_BOX.flatten()[i] for i in range(256)][::-1], dtype=np.uint8).reshape(16, 16)
+MIX_COLUMNS_MATRIX = np.array([...], dtype=np.uint8)
+INV_MIX_COLUMNS_MATRIX = np.array([...], dtype=np.uint8)
 
+RCON = np.array([...], dtype=np.uint8)
 
+def add_round_key(state, key):
+    return np.bitwise_xor(state, key)
 
+def substitute_bytes(state, sbox):
+    return np.vectorize(lambda byte: sbox[(byte >> 4) & 0x0F][byte & 0x0F])(state)
 
-def add_round_key( plaintext , key):
-    return np.bitwise_or(plaintext,key)
+def shift_rows(state):
+    res = np.array(state)
+    for i in range(1, 4):
+        res[i] = np.roll(res[i], -i)
+    return res
 
-def substitute_bytes(byte):
-    row = (byte >> 4) & 0x0f
-    col = byte & 0x0f
-    return S_BOX[row][col]
+def inv_shift_rows(state):
+    res = np.array(state)
+    for i in range(1, 4):
+        res[i] = np.roll(res[i], i)
+    return res
 
-def shift_rows(matrix):
-    res = np.array(matrix)
-    for i in range(1,4):
-        res[i] = np.roll(res[i],shift=-i)
-    return res 
+def mix_columns(state, matrix):
+    return np.dot(matrix, state) % 256
 
-def mix_column(matrix):
-    return np.multiply(matrix,MIX_COLUMNS_MATRIX)
+def key_expansion(key):
+    expanded_key = key.copy()
+    for i in range(4, 44):
+        temp = expanded_key[i - 1].copy()
+        if i % 4 == 0:
+            temp = np.roll(temp, -1)
+            temp = np.vectorize(lambda byte: S_BOX[(byte >> 4) & 0x0F][byte & 0x0F])(temp)
+            temp[0] ^= RCON[i // 4 - 1]
+        expanded_key.append(np.bitwise_xor(expanded_key[i - 4], temp))
+    return np.array(expanded_key).reshape(11, 4, 4)
 
-def initial_key_exp(key):
-    return np.bitwise_xor(key,axis=0)
+def aes_encrypt(plaintext, key):
+    round_keys = key_expansion(key)
+    state = add_round_key(plaintext, round_keys[0])
+    for i in range(1, 10):
+        state = substitute_bytes(state, S_BOX)
+        state = shift_rows(state)
+        state = mix_columns(state, MIX_COLUMNS_MATRIX)
+        state = add_round_key(state, round_keys[i])
+    state = substitute_bytes(state, S_BOX)
+    state = shift_rows(state)
+    state = add_round_key(state, round_keys[10])
+    return state
 
+def aes_decrypt(ciphertext, key):
+    round_keys = key_expansion(key)
+    state = add_round_key(ciphertext, round_keys[10])
+    state = inv_shift_rows(state)
+    state = substitute_bytes(state, INV_S_BOX)
+    for i in range(9, 0, -1):
+        state = add_round_key(state, round_keys[i])
+        state = mix_columns(state, INV_MIX_COLUMNS_MATRIX)
+        state = inv_shift_rows(state)
+        state = substitute_bytes(state, INV_S_BOX)
+    state = add_round_key(state, round_keys[0])
+    return state
 
-
-
-if __name__ == 'main':
-    plaintext = np.array([
-        [0x32, 0x88, 0x31, 0xE0],
-        [0x43, 0x5A, 0x31, 0x37],
-        [0xF6, 0x30, 0x98, 0x07],
-        [0xA8, 0x8D, 0xA2, 0x34]
-    ], dtype=np.uint8)
-
-    key = np.array([
-        [0x2B, 0x28, 0xAB, 0x09],
-        [0x7E, 0xAE, 0xF7, 0xCF],
-        [0x15, 0xD2, 0x15, 0x4F],
-        [0x16, 0xA6, 0x88, 0x3C]
-    ], dtype=np.uint8)
-
-    w = initial_key_exp(key)
-
-    # 128 bit -> 10 rounds -> 10 + 1 
-
-    plain = add_round_key(plaintext,w)
-    for i in range(1,11):
-
-
+if __name__ == '__main__':
+    plaintext = np.array([[0x32, 0x88, 0x31, 0xE0], [0x43, 0x5A, 0x31, 0x37], [0xF6, 0x30, 0x98, 0x07], [0xA8, 0x8D, 0xA2, 0x34]], dtype=np.uint8)
+    key = np.array([[0x2B, 0x28, 0xAB, 0x09], [0x7E, 0xAE, 0xF7, 0xCF], [0x15, 0xD2, 0x15, 0x4F], [0x16, 0xA6, 0x88, 0x3C]], dtype=np.uint8)
+    ciphertext = aes_encrypt(plaintext, key)
+    decrypted = aes_decrypt(ciphertext, key)
+    print("Ciphertext:", ciphertext)
+    print("Decrypted:", decrypted)
