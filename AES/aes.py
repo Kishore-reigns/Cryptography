@@ -1,4 +1,5 @@
 import numpy as np
+from Crypto import pad
 
 S_BOX = [
     [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76],
@@ -19,7 +20,7 @@ S_BOX = [
     [0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16]
 ]
 
-
+TEST = [[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]
 
 MIX_COLUMNS_MATRIX = np.array([
     [0x02, 0x03, 0x01, 0x01],
@@ -32,23 +33,48 @@ MIX_COLUMNS_MATRIX = np.array([
 
 
 def add_round_key( plaintext , key):
-    return plaintext + key
+    return np.bitwise_or(plaintext,key)
 
 def substitute_bytes(byte):
     row = (byte >> 4) & 0x0f
     col = byte & 0x0f
     return S_BOX[row][col]
 
-def mix_columns(matrix):
+def shift_rows(matrix):
     res = np.array(matrix)
     for i in range(1,4):
         res[i] = np.roll(res[i],shift=-i)
     return res 
 
-def mix_columsn(matrix):
-    return 
+def mix_column(matrix):
+    return np.multiply(matrix,MIX_COLUMNS_MATRIX)
 
-print(mix_columns([[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]))
+def initial_key_exp(key):
+    return np.bitwise_xor(key,axis=0)
 
+
+
+
+if __name__ == 'main':
+    plaintext = np.array([
+        [0x32, 0x88, 0x31, 0xE0],
+        [0x43, 0x5A, 0x31, 0x37],
+        [0xF6, 0x30, 0x98, 0x07],
+        [0xA8, 0x8D, 0xA2, 0x34]
+    ], dtype=np.uint8)
+
+    key = np.array([
+        [0x2B, 0x28, 0xAB, 0x09],
+        [0x7E, 0xAE, 0xF7, 0xCF],
+        [0x15, 0xD2, 0x15, 0x4F],
+        [0x16, 0xA6, 0x88, 0x3C]
+    ], dtype=np.uint8)
+
+    w = initial_key_exp(key)
+
+    # 128 bit -> 10 rounds -> 10 + 1 
+
+    plain = add_round_key(plaintext,w)
+    for i in range(1,11):
 
 
