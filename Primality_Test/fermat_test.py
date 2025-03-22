@@ -1,5 +1,5 @@
 
-def fermet_test(p):
+def fermat_test(p):
     for a in range(1,p):
         if( ( (a**p) - a) % p != 0 ):
             return False
@@ -7,4 +7,4 @@ def fermet_test(p):
 
 if __name__ == "__main__":
     p = int(input("Enter the number : "))
-    print(fermet_test(p))
+    print(fermat_test(p))
