@@ -1,25 +1,40 @@
+import random 
 
 def rabin_miller(n):
-    m = find_m(n-1)
-    print(m)
-    a = 2 # can be chose from 1 < a <= n-1 
-    b = a**m % n 
-
-   
-    while(b != 1 and b != -1):
-        b = b**2 % n 
-    if(b == 1):
+    if n < 2:
         return False
+    if n in (2, 3):
+        return True
+    if n % 2 == 0:
+        return False
+    k =5
+    m ,r = find_m_and_r(n-1)
+    #print(m)
+    for _ in range(k):
+        a = random.randint(2,n-2) 
+        #a = 2 
+        b = pow(a, m, n)  # Compute a^m % n
+        if(b== n-1 or b == 1):
+            continue
+        for _ in range(r-1):
+            b = pow(b,2,n)
+            if b == n -1:
+                break
+        else:
+            return False
     return True
+            
 
 
     
-def find_m(n):
-    i , m = 0 , 0 
-    while( n%(2**i) == 0 ):
-        m = n/2**i
-        i += 1
-    return m
+def find_m_and_r(n):
+    """Find m and r such that n-1 = m * 2^r, where m is odd."""
+    r = 0
+    while n % 2 == 0:
+        n //= 2
+        r += 1
+    return n, r
+
 
 
 if __name__ == '__main__':
